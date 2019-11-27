@@ -60,6 +60,10 @@ set(core_files
     Graphics/Color.cpp
     Graphics/RenderTexture.h
     Graphics/RenderTexture.cpp
+    Graphics/ShaderCompiler/ShaderCompiler.h
+    Graphics/ShaderCompiler/ShaderCompiler.cpp
+    Graphics/ShaderCompiler/ResourceLimits.h
+    Graphics/ShaderCompiler/ResourceLimits.cpp
     Math/MathTemplate.h
     Math/Matrix33F.cpp
     Math/Matrix33F.h
@@ -133,6 +137,14 @@ target_link_libraries(
     LLGI
     OpenSoundMixer
     zip
+	spirv-cross-core
+	spirv-cross-c.lib
+	spirv-cross-cpp.lib
+	spirv-cross-hlsl
+	spirv-cross-glsl
+	spirv-cross-msl
+	spirv-cross-reflect
+	spirv-cross-util
     )
 
 if (MSVC)
@@ -146,6 +158,18 @@ if (MSVC)
         optimized zlibstatic
         debug glfw3d
         optimized glfw3
+		debug glslangd
+		optimized glslang
+		debug HLSLd
+		optimized HLSL
+		debug OGLCompilerd
+		optimized OGLCompiler
+		debug OSDependentd
+		optimized OSDependent
+		debug SPIRVd
+		optimized SPIRV
+		debug SPVRemapperd
+		optimized SPVRemapper
     )
 
 elseif(APPLE)
@@ -168,6 +192,18 @@ elseif(APPLE)
         optimized png16
         debug glfw3d
         optimized glfw3
+		debug glslangd
+		optimized glslang
+		debug HLSLd
+		optimized HLSL
+		debug OGLCompilerd
+		optimized OGLCompiler
+		debug OSDependentd
+		optimized OSDependent
+		debug SPIRVd
+		optimized SPIRV
+		debug SPVRemapperd
+		optimized SPVRemapper
         ${COCOA_FRAMEWORK}
         ${IOKIT_FRAMEWORK}
         ${CORE_FOUNDATION_FRAMEWORK}
@@ -194,6 +230,12 @@ else()
         crypto
         X11
         X11-xcb
+		glslang
+		HLSL
+		OGLCompiler
+		OSDependent
+		SPIRV
+		SPVRemapper
         )
 
 endif()
