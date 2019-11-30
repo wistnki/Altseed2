@@ -6,134 +6,347 @@
 
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_glsl.hpp>
+#include <spirv_cross/spirv_hlsl.hpp>
+#include <spirv_cross/spirv_msl.hpp>
+#include <spirv_cross/spirv_reflect.hpp>
 
-const char* shader_ = R"(
+#include <iostream>
 
-#version 440 core
-layout(location = 0) in vec3 a_position;
-layout(location = 1) in vec2 a_uv;
-layout(location = 2) in vec4 a_color;
-    
-out gl_PerVertex
-{
-    vec4 gl_Position;
-};
-    
-layout(location = 0) out vec2 v_uv;
-layout(location = 1) out vec4 v_color;
+const char* simpleVS = R"(
 
-layout(binding = 0, set=0) uniform Block 
-{
-	vec4 u_offset;
-};
-
-void main()
-{
-	gl_Position.x  = a_position.x;
-	gl_Position.y  = a_position.y;
-	gl_Position.z  = a_position.z;
-	gl_Position.w  = 1.0f;
-	gl_Position = gl_Position + u_offset;
-	v_uv = a_uv;
-	v_color = a_color;
-}
-
-)";
-
-const char* hlslShader_ = R"(
 struct VS_INPUT{
-    float3 g_position : POSITION0;
-	float2 g_uv : UV0;
-    float4 g_color : COLOR0;
+    float3 Position : POSITION0;
+	float2 UV : UV0;
+    float4 Color : COLOR0;
 };
 struct VS_OUTPUT{
-    float4 g_position : SV_POSITION;
-    float4 g_color : COLOR0;
+    float4 Position : SV_POSITION;
+	float2 UV : UV0;
+    float4 Color : COLOR0;
 };
-
+   
+cbuffer CB : register(b0)
+{
+  float4 offset;
+};
 VS_OUTPUT main(VS_INPUT input){
     VS_OUTPUT output;
-    
-    output.g_position = float4(input.g_position, 1.0f);
-    output.g_color = input.g_color;
-    
+        
+    output.Position = float4(input.Position, 1.0f) + offset;
+	output.UV = input.UV;
+    output.Color = input.Color;
+        
     return output;
 }
+
 )";
 
-bool compilerTest() {
-    glslang::InitializeProcess();
-    glslang::TProgram& program = *new glslang::TProgram;
-    const char* shaderStrings[1];
-    TBuiltInResource Resources = glslang::DefaultTBuiltInResource;
+const char* simplePS = R"(
 
-    EShLanguage stage = EShLangVertex;
-    glslang::TShader* shader = new glslang::TShader(stage);
-    shader->setEnvInput(glslang::EShSourceHlsl, stage, glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
-    shader->setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
-    shader->setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
-    shaderStrings[0] = hlslShader_;
-    shader->setEntryPoint("main");
-	shader->setAutoMapBindings(true);
-    shader->setAutoMapLocations(true);
+cbuffer CB : register(b1)
+{
+  float4 offset;
+};
+struct PS_INPUT
+{
+    float4  Position : SV_POSITION;
+	float2  UV : UV0;
+    float4  Color    : COLOR0;
+};
+float4 main(PS_INPUT input) : SV_TARGET 
+{ 
+	float4 c;
+	c = input.Color + offset;
+	c.a = 1.0f;
+	return c;
+}
 
-	shader->setStrings(shaderStrings, 1);
-    EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
-        messages = (EShMessages)(messages | EShMsgReadHlsl | EShMsgHlslDX9Compatible);
+)";
 
-    int defaultVersion = 110;
-    if (!shader->parse(&Resources, defaultVersion, false, messages)) {
-        printf("%s\n", shader->getInfoLog());
-        printf("%s\n", shader->getInfoDebugLog());
+const char* textureVS = R"(
 
-        delete &program;
-        delete shader;
-        return false;
-    }
+)";
 
-    program.addShader(shader);
-    
-    if (!program.link(messages)) {
-        delete &program;
-        delete shader;
-        return false;
-    }
+const char* texturePS = R"(
 
-    std::vector<unsigned int> spirv;
-    glslang::GlslangToSpv(*program.getIntermediate(stage), spirv);
-    glslang::FinalizeProcess();
+Texture2D txt : register(t8);
+SamplerState smp : register(s8);
+struct PS_INPUT
+{
+    float4  Position : SV_POSITION;
+	float2  UV : UV0;
+    float4  Color    : COLOR0;
+};
+float4 main(PS_INPUT input) : SV_TARGET 
+{ 
+	float4 c;
+	c = input.Color * txt.Sample(smp, input.UV);
+	return c;
+}
 
-    delete &program;
-    delete shader;
+)";
 
-	{
-        spirv_cross::CompilerGLSL glsl(std::move(spirv));
+namespace altseed {
 
-        // The SPIR-V is now parsed, and we can perform reflection on it.
-        spirv_cross::ShaderResources resources = glsl.get_shader_resources();
+enum class ShaderStageType {
+    Vertex,
+    Pixel,
+};
+
+EShLanguage GetGlslangShaderStage(ShaderStageType type) {
+    if (type == ShaderStageType::Vertex) return EShLanguage::EShLangVertex;
+    if (type == ShaderStageType::Pixel) return EShLanguage::EShLangFragment;
+    throw std::string("Unimplemented ShaderStage");
+}
+
+class SPIRV {
+private:
+    std::vector<uint32_t> data_;
+    std::string error_;
+
+public:
+    SPIRV(const std::vector<uint32_t>& data) : data_(data) {}
+
+    SPIRV(const std::string& error) : error_(error) {}
+
+    std::vector<uint32_t> GetData() const { return data_; }
+};
+
+class SPIRVTranspiler {
+protected:
+    std::string code_;
+    std::string errorCode_;
+
+public:
+    virtual bool Transpile(const std::shared_ptr<SPIRV>& spirv) { return false; }
+    std::string GetErrorCode() const { return errorCode_; }
+    std::string GetCode() const { return code_; }
+};
+
+class SPIRVToHLSLTranspiler : public SPIRVTranspiler {
+public:
+    bool Transpile(const std::shared_ptr<SPIRV>& spirv) override {
+        spirv_cross::CompilerHLSL compiler(spirv->GetData());
+
+        // compiler.build_combined_image_samplers();
+
+        spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
         // Get all sampled images in the shader.
+        for (auto& resource : resources.separate_images) {
+            // compiler.unset_decoration(resource.id, spv::decorationseparate);
+        }
+
         for (auto& resource : resources.sampled_images) {
-            unsigned set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
-            unsigned binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
+            unsigned set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+            unsigned binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
             printf("Image %s at set = %u, binding = %u\n", resource.name.c_str(), set, binding);
 
             // Modify the decoration to prepare it for GLSL.
-            glsl.unset_decoration(resource.id, spv::DecorationDescriptorSet);
+            compiler.unset_decoration(resource.id, spv::DecorationDescriptorSet);
 
             // Some arbitrary remapping if we want.
-            glsl.set_decoration(resource.id, spv::DecorationBinding, set * 16 + binding);
+            compiler.set_decoration(resource.id, spv::DecorationBinding, set * 16 + binding);
         }
 
-        // Set some options.
         spirv_cross::CompilerGLSL::Options options;
-        options.version = 310;
-        //options.es = true;
-        glsl.set_common_options(options);
+        options.separate_shader_objects = true;
+        compiler.set_common_options(options);
 
-        // Compile to GLSL, ready to give to GL driver.
-        std::string source = glsl.compile();
-        std::printf("Shader %s\n", source.c_str());
-	}
+        spirv_cross::CompilerHLSL::Options targetOptions;
+        compiler.set_hlsl_options(targetOptions);
+
+        code_ = compiler.compile();
+
+        return true;
+    }
+};
+
+class SPIRVToMSLTranspiler : public SPIRVTranspiler {
+public:
+    bool Transpile(const std::shared_ptr<SPIRV>& spirv) override {
+        spirv_cross::CompilerMSL compiler(spirv->GetData());
+
+        // compiler.build_combined_image_samplers();
+
+        spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+
+        spirv_cross::CompilerGLSL::Options options;
+        compiler.set_common_options(options);
+
+        spirv_cross::CompilerMSL::Options targetOptions;
+        compiler.set_msl_options(targetOptions);
+
+        code_ = compiler.compile();
+
+        return true;
+    }
+};
+
+class SPIRVToGLSLTranspiler : public SPIRVTranspiler {
+public:
+    bool Transpile(const std::shared_ptr<SPIRV>& spirv) override {
+        spirv_cross::CompilerGLSL compiler(spirv->GetData());
+
+        // to combine a sampler and a texture
+        compiler.build_combined_image_samplers();
+
+        spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+
+
+		int32_t binding = 0;
+        for (auto& resource : resources.sampled_images) 
+		{
+            auto i = compiler.get_decoration(resource.id, spv::DecorationLocation);
+            compiler.set_decoration(resource.id, spv::DecorationBinding, binding);
+            compiler.set_decoration(resource.id, spv::DecorationDescriptorSet, binding);
+            binding += 1;
+        }
+
+        spirv_cross::CompilerGLSL::Options options;
+        options.version = 420;
+        options.enable_420pack_extension = true;
+        compiler.set_common_options(options);
+
+        code_ = compiler.compile();
+
+        return true;
+    }
+};
+
+class SPIRVGenerator {
+private:
+public:
+    bool Initialize() {
+        glslang::InitializeProcess();
+
+        return true;
+    }
+
+    void Terminate() { glslang::FinalizeProcess(); }
+
+    std::shared_ptr<SPIRV> Generate(const char* code, ShaderStageType shaderStageType) {
+        std::string codeStr(code);
+        std::shared_ptr<glslang::TProgram> program = std::make_shared<glslang::TProgram>();
+        TBuiltInResource resources = glslang::DefaultTBuiltInResource;
+        auto shaderStage = GetGlslangShaderStage(shaderStageType);
+
+        std::shared_ptr<glslang::TShader> shader = std::make_shared<glslang::TShader>(shaderStage);
+        shader->setEnvInput(glslang::EShSourceHlsl, shaderStage, glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
+        shader->setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
+        shader->setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+
+        const char* shaderStrings[1];
+        shaderStrings[0] = codeStr.c_str();
+        shader->setEntryPoint("main");
+        // shader->setAutoMapBindings(true);
+        // shader->setAutoMapLocations(true);
+
+        shader->setStrings(shaderStrings, 1);
+        EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
+        messages = (EShMessages)(messages | EShMsgReadHlsl);
+        messages = (EShMessages)(messages | EShOptFull);
+
+        int defaultVersion = 110;
+        if (!shader->parse(&resources, defaultVersion, false, messages)) {
+            return std::make_shared<SPIRV>(program->getInfoLog());
+        }
+
+        program->addShader(shader.get());
+
+        if (!program->link(messages)) {
+            return std::make_shared<SPIRV>(program->getInfoLog());
+        }
+
+        std::vector<unsigned int> spirv;
+        glslang::GlslangToSpv(*program->getIntermediate(shaderStage), spirv);
+
+        return std::make_shared<SPIRV>(spirv);
+    }
+};
+
+}  // namespace altseed
+
+bool compilerTest() {
+    altseed::SPIRVGenerator generator;
+    generator.Initialize();
+    /*
+    {
+        auto spirv = generator.Generate(simpleVS, altseed::ShaderStageType::Vertex);
+
+        {
+            auto transpiler = altseed::SPIRVToGLSLTranspiler();
+            transpiler.Transpile(spirv);
+            std::cout << "== GLSL ==" << std::endl;
+            std::cout << transpiler.GetCode() << std::endl;
+        }
+
+        {
+            auto transpiler = altseed::SPIRVToHLSLTranspiler();
+            transpiler.Transpile(spirv);
+            std::cout << "== HLSL ==" << std::endl;
+            std::cout << transpiler.GetCode() << std::endl;
+        }
+
+        {
+            auto transpiler = altseed::SPIRVToMSLTranspiler();
+            transpiler.Transpile(spirv);
+            std::cout << "== MSL ==" << std::endl;
+            std::cout << transpiler.GetCode() << std::endl;
+        }
+    }
+
+    {
+        auto spirv = generator.Generate(simplePS, altseed::ShaderStageType::Pixel);
+
+        {
+            auto transpiler = altseed::SPIRVToGLSLTranspiler();
+            transpiler.Transpile(spirv);
+            std::cout << "== GLSL ==" << std::endl;
+            std::cout << transpiler.GetCode() << std::endl;
+        }
+
+        {
+            auto transpiler = altseed::SPIRVToHLSLTranspiler();
+            transpiler.Transpile(spirv);
+            std::cout << "== HLSL ==" << std::endl;
+            std::cout << transpiler.GetCode() << std::endl;
+        }
+
+        {
+            auto transpiler = altseed::SPIRVToMSLTranspiler();
+            transpiler.Transpile(spirv);
+            std::cout << "== MSL ==" << std::endl;
+            std::cout << transpiler.GetCode() << std::endl;
+        }
+    }
+        */
+    {
+        auto spirv = generator.Generate(texturePS, altseed::ShaderStageType::Pixel);
+
+        {
+            auto transpiler = altseed::SPIRVToGLSLTranspiler();
+            transpiler.Transpile(spirv);
+            std::cout << "== GLSL ==" << std::endl;
+            std::cout << transpiler.GetCode() << std::endl;
+        }
+
+        {
+            auto transpiler = altseed::SPIRVToMSLTranspiler();
+            transpiler.Transpile(spirv);
+            std::cout << "== MSL ==" << std::endl;
+            std::cout << transpiler.GetCode() << std::endl;
+        }
+
+        {
+            auto transpiler = altseed::SPIRVToHLSLTranspiler();
+            transpiler.Transpile(spirv);
+            std::cout << "== HLSL ==" << std::endl;
+            std::cout << transpiler.GetCode() << std::endl;
+        }
+    }
+
+    generator.Terminate();
+
     return true;
 }
