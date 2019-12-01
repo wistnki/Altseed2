@@ -60,8 +60,8 @@ set(core_files
     Graphics/Color.cpp
     Graphics/RenderTexture.h
     Graphics/RenderTexture.cpp
-    Graphics/ShaderCompiler/ShaderCompiler.h
-    Graphics/ShaderCompiler/ShaderCompiler.cpp
+    Graphics/ShaderCompiler/ShaderTranspiler.h
+    Graphics/ShaderCompiler/ShaderTranspiler.cpp
     Graphics/ShaderCompiler/ResourceLimits.h
     Graphics/ShaderCompiler/ResourceLimits.cpp
     Math/MathTemplate.h
