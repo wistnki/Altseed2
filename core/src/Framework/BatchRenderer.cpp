@@ -49,9 +49,16 @@ void BatchRenderer::Render(std::shared_ptr<CommandList> commandList) {
         vbOffset_ = 0;
     }
 
+	// TODO need to cause warning
     if (VertexBufferMax < rawVertexBuffer_.size()) return;
 
+	// TODO need to cause warning
     if (IndexBufferMax < rawIndexBuffer_.size()) return;
+
+	auto pvb = vertexBuffer_->Lock();
+    auto pib = indexBuffer_->Lock();
+
+
 }
 
 void BatchRenderer::ResetCache() {

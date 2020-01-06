@@ -26,6 +26,7 @@ private:
     static const int32_t IndexBufferMax = 1024 * 200 * 4;
 
     struct Batch {
+        std::shared_ptr<Texture2D> texture;
         std::shared_ptr<Material> material;
         int32_t VertexOffset = 0;
         int32_t IndexOffset = 0;
