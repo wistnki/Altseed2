@@ -12,8 +12,9 @@ namespace altseed {
 class Graphics;
 class CommandList;
 class Material;
+class Texture2D;
 
-class BatchVertex {
+struct BatchVertex {
     Vector3DF Pos;
     Color Col;
     Vector2DF UV1;

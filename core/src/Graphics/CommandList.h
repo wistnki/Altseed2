@@ -1,26 +1,39 @@
 
 #pragma once
 
+#include "../BaseObject.h"
+#include <Utils/LLGI.CommandListPool.h>
 #include <LLGI.Graphics.h>
 
 namespace altseed {
 
-class CommandList 
-{
+class Graphics;
 
+
+
+class CommandList : public BaseObject {
 private:
 
+    LLGI::CommandList* currentCommandList_ = nullptr;
+    std::shared_ptr<LLGI::SingleFrameMemoryPool> memoryPool_;
+    std::shared_ptr<LLGI::CommandListPool> commandListPool_;
+
 public:
+    static std::shared_ptr<CommandList> Create();
 
-	// BeginRenderPass (cache renderpass class)
+	void Newframe();
 
-	// EndRenderPass
+    // BeginRenderPass (cache renderpass class)
 
-	// SetViewport
+    // EndRenderPass
 
-	// SetXXX
+    // SetViewport
 
-	// Draw
+    // SetXXX
+
+    // Draw
+
+    LLGI::CommandList* GetLL() const;
 };
 
 }  // namespace altseed

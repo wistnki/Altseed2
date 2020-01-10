@@ -20,7 +20,7 @@ void RenderedScene::Render(
 
     context.batchRenderer = batchRenderer_;
     context.cameraMattrix = cameraMatrix;
-    context.projectionaMatrix = projectionaMatrix;
+    context.projectionMatrix = projectionaMatrix;
     context.commandList = commandList;
 
     for (auto& obj : objects_) {

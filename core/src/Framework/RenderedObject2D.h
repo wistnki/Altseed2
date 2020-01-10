@@ -22,7 +22,7 @@ public:
 class RenderedObjectDrawingContext {
 public:
     Matrix44F cameraMattrix;
-    Matrix44F projectionaMatrix;
+    Matrix44F projectionMatrix;
     std::shared_ptr<CommandList> commandList;
     std::shared_ptr<BatchRenderer> batchRenderer;
 };
