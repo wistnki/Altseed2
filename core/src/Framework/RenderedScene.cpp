@@ -29,7 +29,7 @@ void RenderedScene::Render(
         obj->Draw(&context);
     }
 
-    batchRenderer_->Render(commandList);
+    //batchRenderer_->Render(commandList);
 }
 
 }  // namespace altseed
