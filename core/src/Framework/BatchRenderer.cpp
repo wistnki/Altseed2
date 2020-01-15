@@ -38,7 +38,7 @@ void BatchRenderer::Draw(
     b.IndexCount += ibCount;
 }
 
-void BatchRenderer::Render(std::shared_ptr<CommandList> commandList) {
+void BatchRenderer::Render(CommandList* commandList) {
     if (batches_.size() == 0) return;
 
     if (VertexBufferMax < vbOffset_ + rawVertexBuffer_.size()) {
@@ -60,6 +60,8 @@ void BatchRenderer::Render(std::shared_ptr<CommandList> commandList) {
 
     vertexBuffer_->Unlock();
     indexBuffer_->Unlock();
+
+
 }
 
 void BatchRenderer::ResetCache() {

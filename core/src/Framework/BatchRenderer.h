@@ -46,7 +46,7 @@ private:
 public:
     BatchRenderer(std::shared_ptr<Graphics> graphics);
     void Draw(const BatchVertex* vb, const int32_t* ib, int32_t vbCount, int32_t ibCount, const std::shared_ptr<Material>& material);
-    void Render(std::shared_ptr<CommandList> commandList);
+    void Render(CommandList* commandList);
     void ResetCache();
 };
 
