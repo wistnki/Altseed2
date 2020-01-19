@@ -1,5 +1,6 @@
 #include "CommandList.h"
 #include "../Graphics/Graphics.h"
+#include "RenderTexture.h"
 
 namespace altseed {
 
@@ -47,8 +48,8 @@ void CommandList::SetRenderTarget(std::shared_ptr<RenderTexture> target, const R
     if (it == renderPassCaches_.end()) {
         auto g = Graphics::GetInstance()->GetGraphicsLLGI();
 
-        LLGI::Texture* texture = nullptr;
-        auto renderPass = LLGI::CreateSharedPtr(g->CreateRenderPass(&texture, 1, nullptr));
+        LLGI::Texture* texture = target->GetNativeTexture().get();
+        auto renderPass = LLGI::CreateSharedPtr(g->CreateRenderPass((const LLGI::Texture**)&texture, 1, nullptr));
         RenderPassCache cache;
         cache.Life = 5;
         cache.Stored = renderPass;
@@ -63,7 +64,7 @@ void CommandList::SetRenderTarget(std::shared_ptr<RenderTexture> target, const R
         currentCommandList_->EndRenderPass();
     }
 
-    // TODO BeginRenderPass
+    currentCommandList_->BeginRenderPass(renderPassCaches_[target].Stored.get());
 
     isInRenderPass_ = true;
 }
