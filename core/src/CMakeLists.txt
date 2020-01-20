@@ -62,6 +62,8 @@ set(core_files
     Graphics/CommandList.cpp
     Graphics/RenderTexture.h
     Graphics/RenderTexture.cpp
+    Graphics/BatchRenderer.h
+    Graphics/BatchRenderer.cpp
     Graphics/ShaderCompiler/ShaderCompiler.h
     Graphics/ShaderCompiler/ShaderCompiler.cpp
     Graphics/ShaderCompiler/ShaderTranspiler.h
@@ -97,19 +99,6 @@ set(core_files
     Sound/SoundMixer.cpp
     Sound/Sound.h
     Sound/Sound.cpp
-    Framework/RenderedObject2D.h
-    Framework/RenderedObject2D.cpp
-    Framework/RenderedObjectCamera2D.h
-    Framework/RenderedObjectCamera2D.cpp
-    Framework/RenderedObjectSprite2D.h
-    Framework/RenderedObjectSprite2D.cpp
-    Framework/RenderedObjectText2D.h
-    Framework/RenderedObjectText2D.cpp
-    Framework/RenderedScene.h
-    Framework/RenderedScene.cpp
-    Framework/BatchRenderer.h
-    Framework/BatchRenderer.cpp
-
 )
 
 if(WIN32)

@@ -5,7 +5,7 @@
 #include <Utils/LLGI.CommandListPool.h>
 #include <map>
 #include "../BaseObject.h"
-#include "../Framework/BatchRenderer.h"
+#include "../Graphics/BatchRenderer.h"
 #include "../Graphics/Color.h"
 #include "../Math/RectI.h"
 #include "../Math/Vector2DF.h"
