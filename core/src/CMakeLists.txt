@@ -66,6 +66,8 @@ set(core_files
     Graphics/RenderTexture.cpp
     Graphics/BatchRenderer.h
     Graphics/BatchRenderer.cpp
+    Graphics/BuildinShader.h
+    Graphics/BuildinShader.cpp
     Graphics/ShaderCompiler/ShaderCompiler.h
     Graphics/ShaderCompiler/ShaderCompiler.cpp
     Graphics/ShaderCompiler/ShaderTranspiler.h
