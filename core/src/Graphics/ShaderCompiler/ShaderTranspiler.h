@@ -17,13 +17,16 @@ class SPIRV {
 private:
     std::vector<uint32_t> data_;
     std::string error_;
+    ShaderStageType shaderStage_;
 
 public:
-    SPIRV(const std::vector<uint32_t>& data);
+    SPIRV(const std::vector<uint32_t>& data, ShaderStageType shaderStage);
 
     SPIRV(const std::string& error);
 
-    std::vector<uint32_t> GetData() const;
+    ShaderStageType GetStage() const;
+
+    const std::vector<uint32_t>& GetData() const;
 };
 
 class SPIRVTranspiler {
@@ -62,6 +65,26 @@ public:
     SPIRVToGLSLTranspiler(bool isVulkanMode) : isVulkanMode_(isVulkanMode) {}
 
     bool Transpile(const std::shared_ptr<SPIRV>& spirv) override;
+};
+
+struct SPIRVReflectionUniform {
+    std::string Name;
+    int32_t Offset = 0;
+    int32_t Size = 0;
+};
+
+struct SPIRVReflectionTexture {
+    std::string Name;
+    int32_t Offset = 0;
+};
+
+class SPIRVReflection : public SPIRVTranspiler {
+public:
+    bool Transpile(const std::shared_ptr<SPIRV>& spirv) override;
+
+    std::vector<SPIRVReflectionUniform> Uniforms;
+
+    std::vector<SPIRVReflectionTexture> Textures;
 };
 
 class SPIRVGenerator {

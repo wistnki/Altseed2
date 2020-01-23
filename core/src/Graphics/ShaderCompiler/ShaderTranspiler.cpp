@@ -12,80 +12,6 @@
 
 #include <iostream>
 
-const char* simpleVS = R"(
-
-struct VS_INPUT{
-    float3 Position : POSITION0;
-	float2 UV : UV0;
-    float4 Color : COLOR0;
-};
-struct VS_OUTPUT{
-    float4 Position : SV_POSITION;
-	float2 UV : UV0;
-    float4 Color : COLOR0;
-};
-   
-cbuffer CB : register(b0)
-{
-  float4 offset;
-};
-VS_OUTPUT main(VS_INPUT input){
-    VS_OUTPUT output;
-        
-    output.Position = float4(input.Position, 1.0f) + offset;
-	output.UV = input.UV;
-    output.Color = input.Color;
-        
-    return output;
-}
-
-)";
-
-const char* simplePS = R"(
-
-cbuffer CB : register(b1)
-{
-  float4 offset;
-};
-struct PS_INPUT
-{
-    float4  Position : SV_POSITION;
-	float2  UV : UV0;
-    float4  Color    : COLOR0;
-};
-float4 main(PS_INPUT input) : SV_TARGET 
-{ 
-	float4 c;
-	c = input.Color + offset;
-	c.a = 1.0f;
-	return c;
-}
-
-)";
-
-const char* textureVS = R"(
-
-)";
-
-const char* texturePS = R"(
-
-Texture2D txt : register(t8);
-SamplerState smp : register(s8);
-struct PS_INPUT
-{
-    float4  Position : SV_POSITION;
-	float2  UV : UV0;
-    float4  Color    : COLOR0;
-};
-float4 main(PS_INPUT input) : SV_TARGET 
-{ 
-	float4 c;
-	c = input.Color * txt.Sample(smp, input.UV);
-	return c;
-}
-
-)";
-
 namespace altseed {
 
 EShLanguage GetGlslangShaderStage(ShaderStageType type) {
@@ -94,11 +20,13 @@ EShLanguage GetGlslangShaderStage(ShaderStageType type) {
     throw std::string("Unimplemented ShaderStage");
 }
 
-SPIRV::SPIRV(const std::vector<uint32_t>& data) : data_(data) {}
+SPIRV::SPIRV(const std::vector<uint32_t>& data, ShaderStageType shaderStage) : data_(data), shaderStage_(shaderStage) {}
 
 SPIRV::SPIRV(const std::string& error) : error_(error) {}
 
-std::vector<uint32_t> SPIRV::GetData() const { return data_; }
+ShaderStageType SPIRV::GetStage() const { return shaderStage_; }
+
+const std::vector<uint32_t>& SPIRV::GetData() const { return data_; }
 
 bool SPIRVTranspiler::Transpile(const std::shared_ptr<SPIRV>& spirv) { return false; }
 
@@ -167,6 +95,51 @@ bool SPIRVToGLSLTranspiler::Transpile(const std::shared_ptr<SPIRV>& spirv) {
     return true;
 }
 
+class ReflectionCompiler : public spirv_cross::Compiler {
+public:
+    ReflectionCompiler(const std::vector<uint32_t>& data) : Compiler(data) {}
+    virtual ~ReflectionCompiler() = default;
+
+    size_t get_member_count(uint32_t id) const {
+        const spirv_cross::Meta& m = ir.meta.at(id);
+        return m.members.size();
+    }
+
+    spirv_cross::SPIRType get_member_type(const spirv_cross::SPIRType& struct_type, uint32_t index) const {
+        return get<spirv_cross::SPIRType>(struct_type.member_types[index]);
+    }
+};
+
+bool SPIRVReflection::Transpile(const std::shared_ptr<SPIRV>& spirv) {
+    ReflectionCompiler compiler(spirv->GetData());
+    spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+
+    // Texture
+    for (const auto& sampler : resources.separate_images) {
+        SPIRVReflectionTexture t;
+        t.Name = sampler.name;
+        t.Offset = compiler.get_decoration(sampler.id, spv::DecorationBinding) - (spirv->GetStage() == ShaderStageType::Vertex ? 0 : 8);
+        Textures.push_back(t);
+    }
+
+    // Uniform
+    for (const auto& resource : resources.uniform_buffers) {
+        auto count = compiler.get_member_count(resource.base_type_id);
+        auto spirvType = compiler.get_type(resource.type_id);
+
+        for (auto i = 0; i < count; i++) {
+            SPIRVReflectionUniform u;
+            auto memberType = compiler.get_member_type(spirvType, i);
+            u.Name = compiler.get_member_name(resource.base_type_id, i);
+            u.Size = compiler.get_declared_struct_member_size(spirvType, i);
+            u.Offset = compiler.get_member_decoration(resource.base_type_id, i, spv::DecorationOffset);
+            Uniforms.push_back(u);
+        }
+    }
+
+    return false;
+}
+
 bool SPIRVGenerator::Initialize() {
     glslang::InitializeProcess();
 
@@ -211,91 +184,7 @@ std::shared_ptr<SPIRV> SPIRVGenerator::Generate(const char* code, ShaderStageTyp
     std::vector<unsigned int> spirv;
     glslang::GlslangToSpv(*program->getIntermediate(shaderStage), spirv);
 
-    return std::make_shared<SPIRV>(spirv);
+    return std::make_shared<SPIRV>(spirv, shaderStageType);
 }
 
 }  // namespace altseed
-
-bool compilerTest() {
-    altseed::SPIRVGenerator generator;
-    generator.Initialize();
-    /*
-    {
-        auto spirv = generator.Generate(simpleVS, altseed::ShaderStageType::Vertex);
-
-        {
-            auto transpiler = altseed::SPIRVToGLSLTranspiler();
-            transpiler.Transpile(spirv);
-            std::cout << "== GLSL ==" << std::endl;
-            std::cout << transpiler.GetCode() << std::endl;
-        }
-
-        {
-            auto transpiler = altseed::SPIRVToHLSLTranspiler();
-            transpiler.Transpile(spirv);
-            std::cout << "== HLSL ==" << std::endl;
-            std::cout << transpiler.GetCode() << std::endl;
-        }
-
-        {
-            auto transpiler = altseed::SPIRVToMSLTranspiler();
-            transpiler.Transpile(spirv);
-            std::cout << "== MSL ==" << std::endl;
-            std::cout << transpiler.GetCode() << std::endl;
-        }
-    }
-
-    {
-        auto spirv = generator.Generate(simplePS, altseed::ShaderStageType::Pixel);
-
-        {
-            auto transpiler = altseed::SPIRVToGLSLTranspiler();
-            transpiler.Transpile(spirv);
-            std::cout << "== GLSL ==" << std::endl;
-            std::cout << transpiler.GetCode() << std::endl;
-        }
-
-        {
-            auto transpiler = altseed::SPIRVToHLSLTranspiler();
-            transpiler.Transpile(spirv);
-            std::cout << "== HLSL ==" << std::endl;
-            std::cout << transpiler.GetCode() << std::endl;
-        }
-
-        {
-            auto transpiler = altseed::SPIRVToMSLTranspiler();
-            transpiler.Transpile(spirv);
-            std::cout << "== MSL ==" << std::endl;
-            std::cout << transpiler.GetCode() << std::endl;
-        }
-    }
-        */
-    {
-        auto spirv = generator.Generate(texturePS, altseed::ShaderStageType::Pixel);
-
-        {
-            auto transpiler = altseed::SPIRVToGLSLTranspiler(true);
-            transpiler.Transpile(spirv);
-            std::cout << "== GLSL ==" << std::endl;
-            std::cout << transpiler.GetCode() << std::endl;
-        }
-
-        {
-            auto transpiler = altseed::SPIRVToMSLTranspiler();
-            transpiler.Transpile(spirv);
-            std::cout << "== MSL ==" << std::endl;
-            std::cout << transpiler.GetCode() << std::endl;
-        }
-
-        {
-            auto transpiler = altseed::SPIRVToHLSLTranspiler();
-            transpiler.Transpile(spirv);
-            std::cout << "== HLSL ==" << std::endl;
-            std::cout << transpiler.GetCode() << std::endl;
-        }
-    }
-
-    generator.Terminate();
-
-    return true;
-}

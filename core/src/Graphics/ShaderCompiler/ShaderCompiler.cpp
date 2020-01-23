@@ -73,11 +73,11 @@ std::shared_ptr<Shader> ShaderCompiler::Compile(const char* code, ShaderStageTyp
     for (auto& b : result.Binary) {
         LLGI::DataStructure d;
         d.Data = b.data();
-        d.Size = b.size();
+        d.Size = static_cast<int32_t>(b.size());
         data.push_back(d);
     }
 
-    auto shaderLLGI = graphics_->GetGraphicsLLGI()->CreateShader(data.data(), data.size());
+    auto shaderLLGI = graphics_->GetGraphicsLLGI()->CreateShader(data.data(), static_cast<int32_t>(data.size()));
 
     auto ret = CreateSharedPtr(new Shader(availableCode, shaderLLGI));
     LLGI::SafeRelease(shaderLLGI);
