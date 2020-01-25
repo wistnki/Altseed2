@@ -111,12 +111,15 @@ public:
 };
 
 bool SPIRVReflection::Transpile(const std::shared_ptr<SPIRV>& spirv) {
+    Textures.clear();
+    Uniforms.clear();
+
     ReflectionCompiler compiler(spirv->GetData());
     spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
     // Texture
     for (const auto& sampler : resources.separate_images) {
-        SPIRVReflectionTexture t;
+        ShaderReflectionTexture t;
         t.Name = sampler.name;
         t.Offset = compiler.get_decoration(sampler.id, spv::DecorationBinding) - (spirv->GetStage() == ShaderStageType::Vertex ? 0 : 8);
         Textures.push_back(t);
@@ -128,7 +131,7 @@ bool SPIRVReflection::Transpile(const std::shared_ptr<SPIRV>& spirv) {
         auto spirvType = compiler.get_type(resource.type_id);
 
         for (auto i = 0; i < count; i++) {
-            SPIRVReflectionUniform u;
+            ShaderReflectionUniform u;
             auto memberType = compiler.get_member_type(spirvType, i);
             u.Name = compiler.get_member_name(resource.base_type_id, i);
             u.Size = compiler.get_declared_struct_member_size(spirvType, i);
@@ -172,7 +175,7 @@ std::shared_ptr<SPIRV> SPIRVGenerator::Generate(const char* code, ShaderStageTyp
 
     int defaultVersion = 110;
     if (!shader->parse(&resources, defaultVersion, false, messages)) {
-        return std::make_shared<SPIRV>(program->getInfoLog());
+        return std::make_shared<SPIRV>(shader->getInfoLog());
     }
 
     program->addShader(shader.get());

@@ -29,6 +29,7 @@ private:
     std::shared_ptr<LLGI::SingleFrameMemoryPool> memoryPool_;
     std::shared_ptr<LLGI::CommandListPool> commandListPool_;
     std::shared_ptr<BatchRenderer> batchRenderer_;
+    std::shared_ptr<LLGI::RenderPass> currentRenderPass_;
     bool isBatchRenderDirtied_ = false;
     bool isInRenderPass_ = false;
 
@@ -47,6 +48,8 @@ public:
 
     void Flush();
 
+	LLGI::SingleFrameMemoryPool* GetMemoryPool() const;
+	LLGI::RenderPass* GetCurrentRenderPass() const;
     LLGI::CommandList* GetLL() const;
 };
 

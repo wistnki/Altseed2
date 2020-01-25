@@ -37,6 +37,7 @@ void CommandList::EndFrame() {
         Flush();
         currentCommandList_->EndRenderPass();
         isInRenderPass_ = false;
+        currentRenderPass_ = nullptr;
     }
 }
 
@@ -65,7 +66,7 @@ void CommandList::SetRenderTarget(std::shared_ptr<RenderTexture> target, const R
     }
 
     currentCommandList_->BeginRenderPass(renderPassCaches_[target].Stored.get());
-
+    currentRenderPass_ = renderPassCaches_[target].Stored;
     isInRenderPass_ = true;
 }
 
@@ -78,6 +79,10 @@ void CommandList::Flush() {
         batchRenderer_->ResetCache();
     }
 }
+
+LLGI::SingleFrameMemoryPool* CommandList::GetMemoryPool() const { return memoryPool_.get(); }
+
+LLGI::RenderPass* CommandList::GetCurrentRenderPass() const { return currentRenderPass_.get(); }
 
 LLGI::CommandList* CommandList::GetLL() const { return currentCommandList_; }
 

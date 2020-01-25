@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "../Shader.h"
 
 namespace altseed {
 
@@ -67,24 +68,13 @@ public:
     bool Transpile(const std::shared_ptr<SPIRV>& spirv) override;
 };
 
-struct SPIRVReflectionUniform {
-    std::string Name;
-    int32_t Offset = 0;
-    int32_t Size = 0;
-};
-
-struct SPIRVReflectionTexture {
-    std::string Name;
-    int32_t Offset = 0;
-};
-
 class SPIRVReflection : public SPIRVTranspiler {
 public:
     bool Transpile(const std::shared_ptr<SPIRV>& spirv) override;
 
-    std::vector<SPIRVReflectionUniform> Uniforms;
+    std::vector<ShaderReflectionUniform> Uniforms;
 
-    std::vector<SPIRVReflectionTexture> Textures;
+    std::vector<ShaderReflectionTexture> Textures;
 };
 
 class SPIRVGenerator {

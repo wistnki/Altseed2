@@ -21,6 +21,7 @@ struct VS_OUTPUT{
    
 cbuffer CB : register(b0)
 {
+  float4 offset;
   float4 offset1;
   float4 offset2;
 
@@ -85,18 +86,18 @@ float4 main(PS_INPUT input) : SV_TARGET
     altseed::SPIRVGenerator generator;
     generator.Initialize();
 
-	    {
+    {
         auto spirv = generator.Generate(constantVS, altseed::ShaderStageType::Vertex);
         auto reflection = altseed::SPIRVReflection();
         reflection.Transpile(spirv);
 
         for (auto& u : reflection.Uniforms) {
             if (u.Name == "offset1") {
-                ASSERT_EQ(u.Offset, 0);
+                ASSERT_EQ(u.Offset, 16);
             }
 
             if (u.Name == "offset2") {
-                ASSERT_EQ(u.Offset, 16);
+                ASSERT_EQ(u.Offset, 32);
             }
         }
     }

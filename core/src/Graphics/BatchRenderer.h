@@ -13,6 +13,8 @@ class Graphics;
 class CommandList;
 class Material;
 class Texture2D;
+class MaterialPropertyBlock;
+class MaterialPropertyBlockCollection;
 
 struct BatchVertex {
     Vector3DF Pos;
@@ -43,8 +45,12 @@ private:
     int32_t vbOffset_ = 0;
     int32_t ibOffset_ = 0;
 
+	std::shared_ptr<Material> matDefaultSprite_;
+	std::shared_ptr<MaterialPropertyBlockCollection> matPropBlockCollection_;
+
 public:
     BatchRenderer(std::shared_ptr<Graphics> graphics);
+    void Draw(const BatchVertex* vb, const int32_t* ib, int32_t vbCount, int32_t ibCount, const std::shared_ptr<Texture2D>& texture);
     void Draw(const BatchVertex* vb, const int32_t* ib, int32_t vbCount, int32_t ibCount, const std::shared_ptr<Material>& material);
     void Render(CommandList* commandList);
     void ResetCache();
