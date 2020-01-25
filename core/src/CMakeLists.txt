@@ -167,27 +167,38 @@ target_link_libraries(
     LLGI
     OpenSoundMixer
     zip
-    spirv-cross-core
-    spirv-cross-c
-    spirv-cross-cpp
-    spirv-cross-hlsl
-    spirv-cross-glsl
-    spirv-cross-msl
-    spirv-cross-reflect
-    spirv-cross-util
-    )
+    debug "${LIBPNG_LIB_DEBUG}"
+    optimized "${LIBPNG_LIB_RELEASE}"
+
+    debug "${GLFW3_LIB_DEBUG}"
+    optimized "${GLFW3_LIB_RELEASE}"
+
+    debug "${LIBSPIRVCROSS_CORE_LIB_DEBUG}"
+    debug "${LIBSPIRVCROSS_C_LIB_DEBUG}"
+    debug "${LIBSPIRVCROSS_CPP_LIB_DEBUG}"
+    debug "${LIBSPIRVCROSS_HLSL_LIB_DEBUG}"
+    debug "${LIBSPIRVCROSS_GLSL_LIB_DEBUG}"
+    debug "${LIBSPIRVCROSS_MSL_LIB_DEBUG}"
+    debug "${LIBSPIRVCROSS_REFLECT_LIB_DEBUG}"
+    debug "${LIBSPIRVCROSS_UTIL_LIB_DEBUG}"
+
+    optimized "${LIBSPIRVCROSS_CORE_LIB_RELEASE}"
+    optimized "${LIBSPIRVCROSS_C_LIB_RELEASE}"
+    optimized "${LIBSPIRVCROSS_CPP_LIB_RELEASE}"
+    optimized "${LIBSPIRVCROSS_HLSL_LIB_RELEASE}"
+    optimized "${LIBSPIRVCROSS_GLSL_LIB_RELEASE}"
+    optimized "${LIBSPIRVCROSS_MSL_LIB_RELEASE}"
+    optimized "${LIBSPIRVCROSS_REFLECT_LIB_RELEASE}"
+    optimized "${LIBSPIRVCROSS_UTIL_LIB_RELEASE}"
+)
 
 if (MSVC)
 
     target_link_libraries(
         Altseed_Core
         PRIVATE
-        debug libpng16_staticd
-        optimized libpng16_static
         debug zlibstaticd
         optimized zlibstatic
-        debug glfw3d
-        optimized glfw3
         debug glslangd
         optimized glslang
         debug HLSLd
@@ -220,10 +231,6 @@ elseif(APPLE)
         PRIVATE
         z
         glslang
-        debug png16d
-        optimized png16
-        debug glfw3d
-        optimized glfw3
         HLSL
         OGLCompiler
         OSDependent
@@ -248,8 +255,6 @@ else()
     target_link_libraries(
         Altseed_Core
         PRIVATE
-        glfw3
-        png16
         z
         stdc++fs
         ssl
@@ -263,7 +268,6 @@ else()
         SPIRV
         SPVRemapper
         )
-
 endif()
 
 if(MSVC)
